@@ -307,3 +307,81 @@
     )
   )
 )
+
+;; Read-only Functions
+
+;; Get asset information
+(define-read-only (get-asset-info (asset-id uint))
+  (map-get? assets { asset-id: asset-id })
+)
+
+;; Get token balance for a principal
+(define-read-only (get-balance
+    (owner principal)
+    (asset-id uint)
+  )
+  (default-to u0
+    (get balance
+      (map-get? token-balances {
+        owner: owner,
+        asset-id: asset-id,
+      })
+    ))
+)
+
+;; Get proposal details
+(define-read-only (get-proposal (proposal-id uint))
+  (map-get? proposals { proposal-id: proposal-id })
+)
+
+;; Get vote information
+(define-read-only (get-vote
+    (proposal-id uint)
+    (voter principal)
+  )
+  (map-get? votes {
+    proposal-id: proposal-id,
+    voter: voter,
+  })
+)
+
+;; Get price feed information
+(define-read-only (get-price-feed (asset-id uint))
+  (map-get? price-feeds { asset-id: asset-id })
+)
+
+;; Get last claimed dividend amount
+(define-read-only (get-last-claim
+    (asset-id uint)
+    (claimer principal)
+  )
+  (default-to u0
+    (get last-claimed-amount
+      (map-get? dividend-claims {
+        asset-id: asset-id,
+        claimer: claimer,
+      })
+    ))
+)
+
+;; Private Helper Functions
+
+;; Get the next available asset ID
+(define-private (get-next-asset-id)
+  (default-to u1 (get-last-asset-id))
+)
+
+;; Get the next available proposal ID
+(define-private (get-next-proposal-id)
+  (default-to u1 (get-last-proposal-id))
+)
+
+;; Implement the get-last-asset-id function to return the current counter
+(define-private (get-last-asset-id)
+  (some (var-get last-asset-id))
+)
+
+;; Implement the get-last-proposal-id function to return the current counter
+(define-private (get-last-proposal-id)
+  (some (var-get last-proposal-id))
+)
