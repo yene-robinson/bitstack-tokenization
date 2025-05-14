@@ -238,3 +238,72 @@
     ))
   )
 )
+
+;; Create a new governance proposal for an asset
+(define-public (create-proposal
+    (asset-id uint)
+    (title (string-ascii 256))
+    (duration uint)
+    (minimum-votes uint)
+  )
+  (begin
+    (asserts! (validate-duration duration) err-invalid-duration)
+    (asserts! (validate-minimum-votes minimum-votes) err-invalid-votes)
+    (asserts! (validate-metadata-uri title) err-invalid-title)
+    (asserts! (>= (get-balance tx-sender asset-id) (/ tokens-per-asset u10))
+      err-not-authorized
+    )
+    (let ((proposal-id (get-next-proposal-id)))
+      ;; Set the new proposal data
+      (map-set proposals { proposal-id: proposal-id } {
+        title: title,
+        asset-id: asset-id,
+        start-height: stacks-block-height,
+        end-height: (+ stacks-block-height duration),
+        executed: false,
+        votes-for: u0,
+        votes-against: u0,
+        minimum-votes: minimum-votes,
+      })
+      ;; Increment the last-proposal-id variable
+      (var-set last-proposal-id proposal-id)
+      (ok proposal-id)
+    )
+  )
+)
+
+;; Vote on an existing proposal
+(define-public (vote
+    (proposal-id uint)
+    (vote-for bool)
+    (amount uint)
+  )
+  (let (
+      (proposal (unwrap! (get-proposal proposal-id) err-not-found))
+      (asset-id (get asset-id proposal))
+      (balance (get-balance tx-sender asset-id))
+    )
+    (begin
+      (asserts! (>= balance amount) err-invalid-amount)
+      (asserts! (< stacks-block-height (get end-height proposal)) err-vote-ended)
+      (asserts! (is-none (get-vote proposal-id tx-sender)) err-vote-exists)
+      (map-set votes {
+        proposal-id: proposal-id,
+        voter: tx-sender,
+      } { vote-amount: amount }
+      )
+      (ok (map-set proposals { proposal-id: proposal-id }
+        (merge proposal {
+          votes-for: (if vote-for
+            (+ (get votes-for proposal) amount)
+            (get votes-for proposal)
+          ),
+          votes-against: (if vote-for
+            (get votes-against proposal)
+            (+ (get votes-against proposal) amount)
+          ),
+        })
+      ))
+    )
+  )
+)
