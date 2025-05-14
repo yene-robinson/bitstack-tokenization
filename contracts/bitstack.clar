@@ -59,3 +59,71 @@
 ;; Asset and proposal counters
 (define-data-var last-asset-id uint u0)
 (define-data-var last-proposal-id uint u0)
+
+;; Data Maps
+
+;; Core asset information
+(define-map assets
+  { asset-id: uint }
+  {
+    owner: principal,
+    metadata-uri: (string-ascii 256),
+    asset-value: uint,
+    is-locked: bool,
+    creation-height: uint,
+    last-price-update: uint,
+    total-dividends: uint,
+  }
+)
+
+;; Token ownership records
+(define-map token-balances
+  {
+    owner: principal,
+    asset-id: uint,
+  }
+  { balance: uint }
+)
+
+;; KYC status tracking
+(define-map kyc-status
+  { address: principal }
+  {
+    is-approved: bool,
+    level: uint,
+    expiry: uint,
+  }
+)
+
+;; Governance proposal tracking
+(define-map proposals
+  { proposal-id: uint }
+  {
+    title: (string-ascii 256),
+    asset-id: uint,
+    start-height: uint,
+    end-height: uint,
+    executed: bool,
+    votes-for: uint,
+    votes-against: uint,
+    minimum-votes: uint,
+  }
+)
+
+;; Vote records
+(define-map votes
+  {
+    proposal-id: uint,
+    voter: principal,
+  }
+  { vote-amount: uint }
+)
+
+;; Dividend distribution tracking
+(define-map dividend-claims
+  {
+    asset-id: uint,
+    claimer: principal,
+  }
+  { last-claimed-amount: uint }
+)
