@@ -185,3 +185,56 @@
     (<= (len uri) u256)
   )
 )
+
+;; Public Functions
+
+;; Register a new asset for tokenization
+(define-public (register-asset
+    (metadata-uri (string-ascii 256))
+    (asset-value uint)
+  )
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+    (asserts! (validate-metadata-uri metadata-uri) err-invalid-uri)
+    (asserts! (validate-asset-value asset-value) err-invalid-value)
+    (let ((asset-id (get-next-asset-id)))
+      ;; Set the new assets data
+      (map-set assets { asset-id: asset-id } {
+        owner: contract-owner,
+        metadata-uri: metadata-uri,
+        asset-value: asset-value,
+        is-locked: false,
+        creation-height: stacks-block-height,
+        last-price-update: stacks-block-height,
+        total-dividends: u0,
+      })
+      ;; Set initial token balance for the asset owner
+      (map-set token-balances {
+        owner: contract-owner,
+        asset-id: asset-id,
+      } { balance: tokens-per-asset }
+      )
+      ;; Increment the last-asset-id variable
+      (var-set last-asset-id asset-id)
+      (ok asset-id)
+    )
+  )
+)
+
+;; Claim outstanding dividends for a specific asset
+(define-public (claim-dividends (asset-id uint))
+  (let (
+      (asset (unwrap! (get-asset-info asset-id) err-not-found))
+      (balance (get-balance tx-sender asset-id))
+      (last-claim (get-last-claim asset-id tx-sender))
+      (total-dividends (get total-dividends asset))
+      (claimable-amount (/ (* balance (- total-dividends last-claim)) tokens-per-asset))
+    )
+    (asserts! (> claimable-amount u0) err-invalid-amount)
+    (ok (map-set dividend-claims {
+      asset-id: asset-id,
+      claimer: tx-sender,
+    } { last-claimed-amount: total-dividends }
+    ))
+  )
+)
